@@ -4,7 +4,7 @@ Required packages can be installed using:
 pip install -r requirements.txt
 ```
 # ReSiDe-S
-To run ReSiDe-S
+To run ReSiDe-S, execute the following command:
 ```python
 python ReSiDe-S.py
 ```
@@ -13,7 +13,7 @@ For training Brain data (2D), run:
 ```python
 ReSiDe_M_brain_training .py
 ```
-For inference Brain data (2D), run:
+For inference with Brain data (2D), run:
 ```python
 ReSiDe_M_brain_inference .py
 ```
@@ -21,7 +21,7 @@ For training MRXCAT data (3D), run:
 ```python
 python ReSiDe_M_mrxcat_training.py
 ```
-For inference MRXCAT data (3D), run:
+For inference with MRXCAT data (3D), run:
 ```python
 python ReSiDe_M_mrxcat_inference.py
 ```
