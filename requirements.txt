@@ -1,0 +1,10 @@
+bm3d==3.0.9
+bm4d==4.0.0
+h5py==2.10.0
+matplotlib==3.3.4
+numpy==1.19.2
+scikit-image==0.17.2
+scipy==1.5.2
+torch==1.10.2
+torchvision==0.11.3
+
