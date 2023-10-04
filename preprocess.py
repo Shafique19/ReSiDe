@@ -37,11 +37,11 @@ def data_load(i,study,samp_pattern,mode):
     if study == 'Perfusion':
         dimension = '3D'
         if mode == 'MRXCAT':
-            kdata = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/perf_phantom_'+str(i)+'_k.mat')['k_full']
-            lsq = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue']
-            S = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/perf_phantom_'+str(i)+'_map_R4.mat')['map'])
-            x0 = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/perf_phantom_'+str(i)+'_x0_R4.mat')['x0']
-            samp = np.float32(loadmat(os.getcwd()+'/'+study+'/'+mode+'/perf_phantom_samp_R4.mat')['samp'])
+            kdata = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/perf_phantom_'+str(i)+'_k.mat')['k_full']
+            lsq = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue']
+            S = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/perf_phantom_'+str(i)+'_map_R4.mat')['map'])
+            x0 = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0']
+            samp = np.float32(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/perf_phantom_samp_R4.mat')['samp'])
             samp_ = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)
             samp_shifted = np.tile(np.expand_dims(samp_,axis=2),(1,1,np.size(S,2),1))
             if i == 17:
@@ -56,10 +56,10 @@ def data_load(i,study,samp_pattern,mode):
                 noise_power = 6.1727
             
         if mode == 'Perf':
-            kdata = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/k_'+str(i)+'.mat')['k']
-            samp = np.float32(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/samp_'+str(i)+'.mat')['samp'])  
-            S = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/map_'+str(i)+'.mat')['map'])
-            x0 = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data_for_testing/x0_'+str(i)+'.mat')['x0'])
+            kdata = loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/k_'+str(i)+'.mat')['k']
+            samp = np.float32(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/samp_'+str(i)+'.mat')['samp'])  
+            S = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/map_'+str(i)+'.mat')['map'])
+            x0 = np.squeeze(loadmat(os.getcwd()+'/'+study+'/'+mode+'/data/x0_'+str(i)+'.mat')['x0'])
             samp_ = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)
             samp_shifted = np.tile(np.expand_dims(samp_,axis=2),(1,1,np.size(S,2),1))
             noise_power = 1
