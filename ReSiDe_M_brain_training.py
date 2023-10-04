@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 23 00:37:34 2021
+Created on Wed Oct 04 00:37:34 2021
 
-@author: sizhu
+@author: sizhu 
 """
 
 import sys
-sys.path.append('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp')
+# sys.path.append('./')
 import logging
 import pathlib
 import random
@@ -202,15 +202,15 @@ if __name__ == '__main__':
     savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
     snr = 10
     ep = 10
-    # samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/datafortraining/T1/R4_gro.mat')['samp'],axes = 0), axes = 1)
+    # samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_gro.mat')['samp'],axes = 0), axes = 1)
     # samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
     for i in range(1,17):
-        samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/datafortraining/T1/R4_randoml_k'+str(i)+'.mat')['samp'],axes = 0), axes = 1)
+        samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_randoml_k'+str(i)+'.mat')['samp'],axes = 0), axes = 1)
         samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
-        kdata.append(loadmat(os.getcwd()+'/datafortraining/T1/k_'+str(i)+'.mat')['k_full'])
+        kdata.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/k_'+str(i)+'.mat')['k_full'])
         noise_power = noise_power + np.var(np.concatenate((kdata[i-1][:4,:,:].reshape(-1),kdata[i-1][-4:,:,:].reshape(-1),kdata[i-1][4:-4,:4,:].reshape(-1),kdata[i-1][4:-4,-4:,:].reshape(-1))))
-        S.append(np.squeeze(loadmat(os.getcwd()+'/datafortraining/T1/t1_r4_randoml_map_k'+str(i)+'.mat')['map'])) 
-        lsq.append(loadmat(os.getcwd()+'/datafortraining/T1/im_'+str(i)+'.mat')['imtrue'])
+        S.append(np.squeeze(loadmat(os.getcwd()+'/Brain/T1/data_for_training/t1_r4_randoml_map_k'+str(i)+'.mat')['map'])) 
+        lsq.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/im_'+str(i)+'.mat')['imtrue'])
         kdata[i-1] = np.fft.fftshift(np.fft.fftshift(kdata[i-1],axes = 0), axes = 1)
         kdata[i-1] = kdata[i-1]*samp_3
         S[i-1] = np.fft.fftshift(np.fft.fftshift(S[i-1],axes = 0), axes = 1)  
@@ -259,7 +259,7 @@ if __name__ == '__main__':
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-        torch.save(model,os.getcwd()+'/datafortesting/T1/T1_r4_randoml/reside_m_net_auto/pymodel_%03d.pth' % (ite+1))  
+        torch.save(model,os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/pymodel_%03d.pth' % (ite+1))  
         noisepower_avg = 0
         for i in range(16): 
             midvar_norm = midvar[i]/np.abs(np.real(midvar[i])).max()
@@ -277,9 +277,9 @@ if __name__ == '__main__':
             nmse_i = NMSE(lsq[i],w[i])
             savenmse[i].append(nmse_i)
             print(nmse_i)   
-        file_name = os.getcwd()+'/datafortesting/T1/T1_r4_randoml/reside_m_net_auto/im_'+str(ite)+'.mat'
+        file_name = os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/im_'+str(ite)+'.mat'
         savemat(file_name,{'x':w})              
-        savemat(os.getcwd()+'/datafortesting/T1/T1_r4_randoml/reside_m_net_auto/nmse.mat',{'nmse':savenmse}) 
+        savemat(os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/nmse.mat',{'nmse':savenmse}) 
         para = noisepower_avg/noise_power/0.7
         if ite > 2:
             snr = snr*para**0.1
