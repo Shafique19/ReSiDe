@@ -21,7 +21,7 @@ def get_parser(method,study,mode):
                             help='batch size')
         parser.add_argument('--patchSize', default=(64,64),
                             help='patch size')
-        parser.add_argument('--tau', type=float, default=0.7,
+        parser.add_argument('--tau', type=float, default=0.65,
                             help='tuning parameter for discrepancy principle')        
         parser.add_argument('--alpha', type=float, default=0.1,
                             help='tuning parameter for discrepancy principle') 
