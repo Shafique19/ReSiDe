@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 23 00:37:34 2021
+Created on Wed Oct 04 00:37:34 2021
 
 @author: sizhu
 """
 
 import sys
-sys.path.append('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp')
+sys.path.append('/')
 import logging
 import pathlib
 import random
