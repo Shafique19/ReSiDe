@@ -260,7 +260,7 @@ if __name__ == '__main__':
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-        torch.save(model,os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/pymodel_%03d.pth' % (ite+1))  
+        torch.save(model,os.getcwd()+'/Brain/T1/data_for_testing/pymodel_%03d.pth' % (ite+1))  
         noisepower_avg = 0
         for i in range(16): 
             midvar_norm = midvar[i]/np.abs(np.real(midvar[i])).max()
@@ -278,9 +278,9 @@ if __name__ == '__main__':
             nmse_i = NMSE(lsq[i],w[i])
             savenmse[i].append(nmse_i)
             print(nmse_i)   
-        file_name = os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/im_'+str(ite)+'.mat'
+        file_name = os.getcwd()+'/Brain/T1/data_for_testing/im_'+str(ite)+'.mat'
         savemat(file_name,{'x':w})              
-        savemat(os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/nmse.mat',{'nmse':savenmse}) 
+        savemat(os.getcwd()+'/Brain/T1/data_for_testing/nmse.mat',{'nmse':savenmse}) 
         para = noisepower_avg/noise_power/tau
         if ite > 2:
             snr = snr*para**0.1
