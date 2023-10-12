@@ -11,7 +11,7 @@ def get_parser(method,study,mode):
                         help='number of training data')   
     
     if study == 'Brain':
-        parser.add_argument('--snr', type=float, default=10,
+        parser.add_argument('--snr', type=float, default=5,
                             help='initial noise added for training')         
         parser.add_argument('--iterations', type=int, default=80,
                             help='number of iterations')
@@ -35,7 +35,7 @@ def get_parser(method,study,mode):
     if study == 'Perfusion':
         parser.add_argument('--snr', type=float, default=5,
                             help='initial noise added for training')
-        parser.add_argument('--iterations', type=int, default=60,
+        parser.add_argument('--iterations', type=int, default=80,
                             help='number of iterations')
         parser.add_argument('--learning_rate', type=float, default=1e-4,
                             help='learning rate')     
@@ -45,13 +45,13 @@ def get_parser(method,study,mode):
                             help='patch size')
         parser.add_argument('--patches', type=int, default=288,
                             help='number of patches extracted from a image')
-        parser.add_argument('--alpha', type=int, default=1,
+        parser.add_argument('--alpha', type=int, default=0.1,
                             help='tuning parameter for discrepancy principle') 
         if mode == 'MRXCAT':
             parser.add_argument('--tau', type=float, default=0.9,
                                 help='tuning parameter for discrepancy principle')
         if mode == 'Perf':       
-            parser.add_argument('--tau', type=float, default=1.1,
+            parser.add_argument('--tau', type=float, default=1.15,
                                 help='tuning parameter for discrepancy principle')
 
     return parser
