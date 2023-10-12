@@ -24,10 +24,10 @@ for i in range(17,22):
     x, kdata, lsq, pMRI, dimension, noise_power = preprocess.data_load(i,study,samp_pattern,mode)
     z = pMRI.mult(x)-kdata
     p = fun.powerite(pMRI,x.shape)
-    gamma_p = rho/p
+    gamma_p = rho*p
     for ite in range(args.iterations): 
         xold = x
-        midvar = xold-1/rho*pMRI.multTr(z)
+        midvar = xold-rho*pMRI.multTr(z)
         midvar = np.fft.fftshift(np.fft.fftshift(midvar,axes=0),axes = 1)       
             
         if dimension == '2D':
@@ -54,7 +54,7 @@ for i in range(17,22):
         im = im* np.abs(np.real(midvar)).max() 
         x = np.fft.fftshift(np.fft.fftshift(im,axes=0),axes = 1)
         s = 2*x-xold
-        z = 1/(1+gamma_p)*z+gamma_p/(1+gamma_p)*(pMRI.mult(s)-kdata)
+        z = gamma_p/(1+gamma_p)*z+1/(1+gamma_p)*(pMRI.mult(s)-kdata)
         para = np.linalg.norm(pMRI.mult(x)-kdata)**2/np.count_nonzero(kdata)/noise_power/args.tau      
         if ite > 2:
             snr = snr*para**args.alpha
