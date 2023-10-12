@@ -4,7 +4,8 @@ Required packages can be installed using:
 pip install -r requirements.txt
 ```
 # Data
-"For static data, you can find the brain MRI data in the 'Brain' folder, which contains T1 and T2 weighted images to run the demo for ReSiDe-S and ReSiDe-M. For dynamic data, you can download the MRXCAT digital perfusion phantom data from [source URL] and place it into the 'Perfusion/MRXCAT/data' directory to run the demo for ReSiDe-S and ReSiDe-M."
+"For static data, you can find the brain MRI data in the 'Brain' folder, which contains T1 and T2 weighted images to run the demo for ReSiDe-S and ReSiDe-M.
+For dynamic data, you can download the MRXCAT digital perfusion phantom data from [https://figshare.com/s/57f6689ec5d89e608a11] and place it into the 'Perfusion/MRXCAT/data' directory to run the demo for ReSiDe-S and ReSiDe-M."
 # ReSiDe-S
 To run ReSiDe-S, execute the following command:
 ```python
