@@ -200,7 +200,8 @@ if __name__ == '__main__':
     noise_power = 0
     rho = 1  
     savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-    snr = 10
+    snr = 5
+    tau = 0.65
     ep = 10
     # samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_gro.mat')['samp'],axes = 0), axes = 1)
     # samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
@@ -221,7 +222,7 @@ if __name__ == '__main__':
         w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
         z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
         p.append(powerite(pMRI[i-1],x[i-1].shape))
-        gamma_p.append(rho/p[i-1])
+        gamma_p.append(rho*p[i-1])
         xold.append(x[i-1])
         midvar.append(x[i-1])
     for ite in range(0,80):   
@@ -242,7 +243,7 @@ if __name__ == '__main__':
         #     ep = 10
         for i in range(16):
             xold[i] = x[i]
-            midvar[i] = xold[i]-1/rho*pMRI[i].multTr(z[i])
+            midvar[i] = xold[i]-rho*pMRI[i].multTr(z[i])
             midvar[i] = np.fft.ifftshift(np.fft.ifftshift(midvar[i],axes=1),axes = 0)
         model = BasicNet()
         model.train()
@@ -272,7 +273,7 @@ if __name__ == '__main__':
             w[i] = midout* np.abs(np.real(midvar[i])).max()
             x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1)       
             s = 2*x[i]-xold[i]
-            z[i] = 1/(1+gamma_p[i])*z[i]+gamma_p[i]/(1+gamma_p[i])*(pMRI[i].mult(s)-kdata[i])  
+            z[i] = gamma_p[i]/(1+gamma_p[i])*z[i]+1/(1+gamma_p[i])*(pMRI[i].mult(s)-kdata[i])
             noisepower_avg = noisepower_avg + np.linalg.norm(pMRI[i].mult(x[i])-kdata[i])**2/kdata[i].size
             nmse_i = NMSE(lsq[i],w[i])
             savenmse[i].append(nmse_i)
@@ -280,7 +281,7 @@ if __name__ == '__main__':
         file_name = os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/im_'+str(ite)+'.mat'
         savemat(file_name,{'x':w})              
         savemat(os.getcwd()+'/Brain/T1/data_for_testing/T1_r4_randoml/reside_m_net_auto/nmse.mat',{'nmse':savenmse}) 
-        para = noisepower_avg/noise_power/0.7
+        para = noisepower_avg/noise_power/tau
         if ite > 2:
             snr = snr*para**0.1
         print("snr: " + repr(snr))
