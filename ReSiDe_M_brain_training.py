@@ -202,6 +202,7 @@ if __name__ == '__main__':
     savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
     snr = 5
     tau = 0.65
+    alpha = 0.1
     ep = 10
     # samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_gro.mat')['samp'],axes = 0), axes = 1)
     # samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
@@ -283,7 +284,7 @@ if __name__ == '__main__':
         savemat(os.getcwd()+'/Brain/T1/data_for_testing/nmse.mat',{'nmse':savenmse}) 
         para = noisepower_avg/noise_power/tau
         if ite > 2:
-            snr = snr*para**0.1
+            snr = snr*para**alpha
         print("snr: " + repr(snr))
 
 
