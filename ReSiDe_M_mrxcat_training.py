@@ -5,7 +5,7 @@ Created on Wed Oct 27 01:18:41 2021
 @author: sizhu
 """
 import sys
-sys.path.append('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp')
+# sys.path.append('./')
 import logging
 import random
 import os
@@ -159,18 +159,21 @@ if __name__ == '__main__':
     midvar = []
     savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
     xold = []
-    samp = np.float32(loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/perf_phantom_samp_R4.mat')['samp'])
+    samp = np.float32(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_samp_R4.mat')['samp'])
     samp_shifted = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)  
-    x_ini = loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/recon/testing/R4/reside_m_net_auto/im_10.mat')['x'] 
+    # x_ini = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/im_10.mat')['x'] 
     rho = 1
     ep = 10
     snr = 5
+    tau = 0.9
+    alpha = 0.1
+    nite = 80
     for i in range(1,17):
-        kdata.append(loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/recon/training/perf_phantom_'+str(i)+'_k.mat')['k_full'])
-        lsq.append(loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/recon/training/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue'])   
-        S.append(np.squeeze(loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/recon/training/perf_phantom_'+str(i)+'_map_R4.mat')['map']))
-        x0 = x_ini[i-1,:,:,:]
-        # x0 = loadmat('C:/Users/sizhu/OneDrive - The Ohio State University/Documents_OSU_Research/unsupervised pnp/perfusion/MRXCAT/recon/training/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
+        kdata.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_k.mat')['k_full'])
+        lsq.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue'])   
+        S.append(np.squeeze(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_map_R4.mat')['map']))
+        # x0 = x_ini[i-1,:,:,:]
+        x0 = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
         x0 = np.fft.fftshift(np.fft.fftshift(x0,axes = 0), axes = 1)
         # x0 = np.tile(np.expand_dims(x0,axis=2),[1,1,np.size(samp_shifted,2)])    
         kdata[i-1] = kdata[i-1]*np.expand_dims(samp,axis=2)
@@ -183,10 +186,10 @@ if __name__ == '__main__':
         z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
         w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
         p.append(powerite(pMRI[i-1],x[i-1].shape))
-        gamma.append(rho/p[i-1]) 
+        gamma.append(rho*p[i-1]) 
         xold.append(x[i-1])
         midvar.append(x[i-1])
-    for ite in range(10,60):   
+    for ite in range(nite):   
         # if ite < 8:
         #     snr = 5
         #     ep = 10
@@ -196,7 +199,7 @@ if __name__ == '__main__':
         noisepower_avg = 0
         for ii in range(16):
             xold[ii] = x[ii]
-            midvar[ii] = xold[ii]-1/rho*pMRI[ii].multTr(z[ii])
+            midvar[ii] = xold[ii]-rho*pMRI[ii].multTr(z[ii])
             midvar[ii] = np.fft.ifftshift(np.fft.ifftshift(midvar[ii],axes=1),axes = 0)            
         model = BasicNet()
         model.train()
@@ -213,7 +216,7 @@ if __name__ == '__main__':
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-        torch.save(model,os.getcwd()+'/perfusion/MRXCAT/recon/testing/R4/reside_m_net_auto_test/pymodel_%03d.pth' % (ite+1))          
+        torch.save(model,os.getcwd()+'/Perfusion/MRXCAT/data/pymodel_%03d.pth' % (ite+1))          
         for i in range(16):
             midvar_norm = np.expand_dims(np.expand_dims(midvar[i]/np.abs(np.real(midvar[i])).max(),axis = 0),axis = 1)
             midvar_im = torch.from_numpy(np.array(np.concatenate((np.real(midvar_norm),np.imag(midvar_norm)),1),dtype = 'float32')).cuda()
@@ -222,20 +225,19 @@ if __name__ == '__main__':
             w[i] = midout* np.abs(np.real(midvar[i])).max()
             x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1) 
             s = 2*x[i]-xold[i]
-            z[i] = 1/(1+gamma[i])*z[i]+gamma[i]/(1+gamma[i])*(pMRI[i].mult(s)-kdata[i])
+            z[i] = gamma[i]/(1+gamma[i])*z[i]+1/(1+gamma[i])*(pMRI[i].mult(s)-kdata[i])
             nmse_i = NMSE(lsq[i],w[i])
             savenmse[i].append(nmse_i)            
             print('normalized mean square error of x'+str(i)+': ' + repr(nmse_i))
-            file_name = os.getcwd()+'/perfusion/MRXCAT/recon/testing/R4/reside_m_net_auto_test/im_'+str(ite)+'.mat'
+            file_name = os.getcwd()+'/Perfusion/MRXCAT/data/im_'+str(ite)+'.mat'
             savemat(file_name,{'x':w})  
-            savemat(os.getcwd()+'/perfusion/MRXCAT/recon/testing/R4/reside_m_net_auto_test/nmse.mat',{'nmse':savenmse}) 
+            savemat(os.getcwd()+'/Perfusion/MRXCAT/data/nmse.mat',{'nmse':savenmse}) 
             noisepower_avg = noisepower_avg + np.var(pMRI[i].mult(x[i])-kdata[i])
         del model
-        para = noisepower_avg/16/6.1252/0.9
+        para = noisepower_avg/16/6.1252/tau
         if ite > 2:
-            snr = snr*para**0.1
+            snr = snr*para**alpha
             print("snr: " + repr(snr))
-
 
 
 
