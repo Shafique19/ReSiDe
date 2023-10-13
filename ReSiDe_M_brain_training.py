@@ -185,107 +185,107 @@ def apply_denoiser(x,model):
 
 
 
-if __name__ == '__main__':
-    kdata = []
-    lsq = []
-    S = []
-    pMRI = []
-    x = []
-    z = []
-    w = []
-    p = []
-    gamma_p = []
-    midvar = []
-    xold = []
-    noise_power = 0
-    rho = 1  
-    savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-    snr = 5
-    tau = 0.65
-    alpha = 0.1
-    ep = 10
-    # samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_gro.mat')['samp'],axes = 0), axes = 1)
-    # samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
-    for i in range(1,17):
-        samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_randoml_k'+str(i)+'.mat')['samp'],axes = 0), axes = 1)
-        samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
-        kdata.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/k_'+str(i)+'.mat')['k_full'])
-        noise_power = noise_power + np.var(np.concatenate((kdata[i-1][:4,:,:].reshape(-1),kdata[i-1][-4:,:,:].reshape(-1),kdata[i-1][4:-4,:4,:].reshape(-1),kdata[i-1][4:-4,-4:,:].reshape(-1))))
-        S.append(np.squeeze(loadmat(os.getcwd()+'/Brain/T1/data_for_training/t1_r4_randoml_map_k'+str(i)+'.mat')['map'])) 
-        lsq.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/im_'+str(i)+'.mat')['imtrue'])
-        kdata[i-1] = np.fft.fftshift(np.fft.fftshift(kdata[i-1],axes = 0), axes = 1)
-        kdata[i-1] = kdata[i-1]*samp_3
-        S[i-1] = np.fft.fftshift(np.fft.fftshift(S[i-1],axes = 0), axes = 1)  
-        kdata_u = kdata[i-1].flatten('F')    
-        kdata[i-1] = kdata_u[np.where(samp_3.flatten('F')>0)]
-        pMRI.append(pMRI_2D(S[i-1], samp))
-        x.append(pMRI[i-1].multTr(kdata[i-1]))
-        w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
-        z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
-        p.append(powerite(pMRI[i-1],x[i-1].shape))
-        gamma_p.append(rho*p[i-1])
-        xold.append(x[i-1])
-        midvar.append(x[i-1])
-    for ite in range(0,80):   
-        # if ite < 15:
-        #     snr = 10
-        #     ep = 10
-        # if 15 <= ite < 30:
-        #     snr = 15
-        #     ep = 10
-        # if 30 <= ite < 45:
-        #     snr = 20
-        #     ep = 10
-        # if 45 <= ite < 60:
-        #     snr = 25
-        #     ep = 10
-        # if 60 <= ite:
-        #     snr = 30
-        #     ep = 10
-        for i in range(16):
-            xold[i] = x[i]
-            midvar[i] = xold[i]-rho*pMRI[i].multTr(z[i])
-            midvar[i] = np.fft.ifftshift(np.fft.ifftshift(midvar[i],axes=1),axes = 0)
-        model = BasicNet()
-        model.train()
-        device = torch.device('cuda:0')
-        model = model.to(device)
-        opt = optim.Adam(model.parameters(), lr=0.001)
-        scheduler = MultiStepLR(opt, milestones=[200, 300], gamma=0.5)
-        train_loader = create_data_loaders()
-        for epoch in range(0,ep):
-            for train_iter, Data in enumerate(train_loader):
-                x_batch,y_batch = Data
-                out = model(x_batch.to(device, dtype=torch.float))
-                loss = F.mse_loss(out,y_batch.to(device, dtype=torch.float), reduction='sum')
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-        torch.save(model,os.getcwd()+'/Brain/T1/data_for_testing/pymodel_%03d.pth' % (ite+1))  
-        noisepower_avg = 0
-        for i in range(16): 
-            midvar_norm = midvar[i]/np.abs(np.real(midvar[i])).max()
-            midvar_im = np.expand_dims(np.expand_dims(midvar_norm,axis = 0) ,axis = 1)
-            midvar_im = np.concatenate((np.real(midvar_im),np.imag(midvar_im)),1)
-            midvar_im = np.array(midvar_im,dtype = 'float32')
-            midvar_im = torch.from_numpy(midvar_im).cuda()
-            midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
-            midout = np.squeeze(midout[:,0,:,:]+1j*midout[:,1,:,:])
-            w[i] = midout* np.abs(np.real(midvar[i])).max()
-            x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1)       
-            s = 2*x[i]-xold[i]
-            z[i] = gamma_p[i]/(1+gamma_p[i])*z[i]+1/(1+gamma_p[i])*(pMRI[i].mult(s)-kdata[i])
-            noisepower_avg = noisepower_avg + np.linalg.norm(pMRI[i].mult(x[i])-kdata[i])**2/kdata[i].size
-            nmse_i = NMSE(lsq[i],w[i])
-            savenmse[i].append(nmse_i)
-            print(nmse_i)   
-        file_name = os.getcwd()+'/Brain/T1/data_for_testing/im_'+str(ite)+'.mat'
-        savemat(file_name,{'x':w})              
-        savemat(os.getcwd()+'/Brain/T1/data_for_testing/nmse.mat',{'nmse':savenmse}) 
-        para = noisepower_avg/noise_power/tau
-        if ite > 2:
-            snr = snr*para**alpha
-        print("snr: " + repr(snr))
+# if __name__ == '__main__':
+kdata = []
+lsq = []
+S = []
+pMRI = []
+x = []
+z = []
+w = []
+p = []
+gamma_p = []
+midvar = []
+xold = []
+noise_power = 0
+rho = 1  
+savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
+snr = 5
+tau = 0.65
+alpha = 0.1
+ep = 10
+# samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_gro.mat')['samp'],axes = 0), axes = 1)
+# samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
+for i in range(1,17):
+    samp = np.fft.fftshift(np.fft.fftshift(loadmat(os.getcwd()+'/Brain/T1/data_for_training/R4_randoml_k'+str(i)+'.mat')['samp'],axes = 0), axes = 1)
+    samp_3 = np.tile(np.expand_dims(samp,axis=2),[1,1,8])    
+    kdata.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/k_'+str(i)+'.mat')['k_full'])
+    noise_power = noise_power + np.var(np.concatenate((kdata[i-1][:4,:,:].reshape(-1),kdata[i-1][-4:,:,:].reshape(-1),kdata[i-1][4:-4,:4,:].reshape(-1),kdata[i-1][4:-4,-4:,:].reshape(-1))))
+    S.append(np.squeeze(loadmat(os.getcwd()+'/Brain/T1/data_for_training/t1_r4_randoml_map_k'+str(i)+'.mat')['map'])) 
+    lsq.append(loadmat(os.getcwd()+'/Brain/T1/data_for_training/im_'+str(i)+'.mat')['imtrue'])
+    kdata[i-1] = np.fft.fftshift(np.fft.fftshift(kdata[i-1],axes = 0), axes = 1)
+    kdata[i-1] = kdata[i-1]*samp_3
+    S[i-1] = np.fft.fftshift(np.fft.fftshift(S[i-1],axes = 0), axes = 1)  
+    kdata_u = kdata[i-1].flatten('F')    
+    kdata[i-1] = kdata_u[np.where(samp_3.flatten('F')>0)]
+    pMRI.append(pMRI_2D(S[i-1], samp))
+    x.append(pMRI[i-1].multTr(kdata[i-1]))
+    w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
+    z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
+    p.append(powerite(pMRI[i-1],x[i-1].shape))
+    gamma_p.append(rho*p[i-1])
+    xold.append(x[i-1])
+    midvar.append(x[i-1])
+for ite in range(0,80):   
+    # if ite < 15:
+    #     snr = 10
+    #     ep = 10
+    # if 15 <= ite < 30:
+    #     snr = 15
+    #     ep = 10
+    # if 30 <= ite < 45:
+    #     snr = 20
+    #     ep = 10
+    # if 45 <= ite < 60:
+    #     snr = 25
+    #     ep = 10
+    # if 60 <= ite:
+    #     snr = 30
+    #     ep = 10
+    for i in range(16):
+        xold[i] = x[i]
+        midvar[i] = xold[i]-rho*pMRI[i].multTr(z[i])
+        midvar[i] = np.fft.ifftshift(np.fft.ifftshift(midvar[i],axes=1),axes = 0)
+    model = BasicNet()
+    model.train()
+    device = torch.device('cuda:0')
+    model = model.to(device)
+    opt = optim.Adam(model.parameters(), lr=0.001)
+    scheduler = MultiStepLR(opt, milestones=[200, 300], gamma=0.5)
+    train_loader = create_data_loaders()
+    for epoch in range(0,ep):
+        for train_iter, Data in enumerate(train_loader):
+            x_batch,y_batch = Data
+            out = model(x_batch.to(device, dtype=torch.float))
+            loss = F.mse_loss(out,y_batch.to(device, dtype=torch.float), reduction='sum')
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+    torch.save(model,os.getcwd()+'/Brain/T1/data_for_testing/pymodel_%03d.pth' % (ite+1))  
+    noisepower_avg = 0
+    for i in range(16): 
+        midvar_norm = midvar[i]/np.abs(np.real(midvar[i])).max()
+        midvar_im = np.expand_dims(np.expand_dims(midvar_norm,axis = 0) ,axis = 1)
+        midvar_im = np.concatenate((np.real(midvar_im),np.imag(midvar_im)),1)
+        midvar_im = np.array(midvar_im,dtype = 'float32')
+        midvar_im = torch.from_numpy(midvar_im).cuda()
+        midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
+        midout = np.squeeze(midout[:,0,:,:]+1j*midout[:,1,:,:])
+        w[i] = midout* np.abs(np.real(midvar[i])).max()
+        x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1)       
+        s = 2*x[i]-xold[i]
+        z[i] = gamma_p[i]/(1+gamma_p[i])*z[i]+1/(1+gamma_p[i])*(pMRI[i].mult(s)-kdata[i])
+        noisepower_avg = noisepower_avg + np.linalg.norm(pMRI[i].mult(x[i])-kdata[i])**2/kdata[i].size
+        nmse_i = NMSE(lsq[i],w[i])
+        savenmse[i].append(nmse_i)
+        print(nmse_i)   
+    file_name = os.getcwd()+'/Brain/T1/data_for_testing/im_'+str(ite)+'.mat'
+    savemat(file_name,{'x':w})              
+    savemat(os.getcwd()+'/Brain/T1/data_for_testing/nmse.mat',{'nmse':savenmse}) 
+    para = noisepower_avg/noise_power/tau
+    if ite > 2:
+        snr = snr*para**alpha
+    print("snr: " + repr(snr))
 
 
 
