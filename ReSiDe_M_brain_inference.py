@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 04 00:37:34 2021
+Created on Thu Oct 12 00:37:34 2023
 
 @author: sizhu
 """
@@ -132,63 +132,63 @@ def apply_denoiser(x,model):
 
 
 
-if __name__ == '__main__':
-    savenmse = []
+# if __name__ == '__main__':
+savenmse = []
   
-    i=21
-    k_full = loadmat(os.getcwd()+'Brain/T1/data_for_testing/kspace_and_true_images/k_'+str(i)+'.mat')['k_full']
-    S = np.squeeze(loadmat(os.getcwd()+'Brain/T1/data_for_testing/GRO_samp_and_sens_maps/r4_gro_map_k'+str(i)+'.mat')['map'])   
-    imtrue = loadmat(os.getcwd()+'Brain/T1/data_for_testing/kspace_and_true_images/im_'+str(i)+'.mat')['imtrue']
-    samp = loadmat(os.getcwd()+'Brain/T1/data_for_testing/GRO_samp_and_sens_maps/R4_gro'+str(i)+'.mat')['samp'] 
+i=21
+k_full = loadmat(os.getcwd()+'Brain/T1/data_for_testing/kspace_and_true_images/k_'+str(i)+'.mat')['k_full']
+S = np.squeeze(loadmat(os.getcwd()+'Brain/T1/data_for_testing/GRO_samp_and_sens_maps/r4_gro_map_k'+str(i)+'.mat')['map'])   
+imtrue = loadmat(os.getcwd()+'Brain/T1/data_for_testing/kspace_and_true_images/im_'+str(i)+'.mat')['imtrue']
+samp = loadmat(os.getcwd()+'Brain/T1/data_for_testing/GRO_samp_and_sens_maps/R4_gro'+str(i)+'.mat')['samp'] 
  
 
-    k_samp = k_full*np.expand_dims(samp,axis=2)
-    k_shifted = np.fft.fftshift(np.fft.fftshift(k_samp,axes = 0), axes = 1)
-    samp = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)
-    samp_shifted = np.tile(np.expand_dims(samp,axis=2),[1,1,np.size(k_full,2)]) 
-    kdata = k_shifted.flatten('F')    
-    kdata = kdata[np.where(samp_shifted.flatten('F')>0)]
+k_samp = k_full*np.expand_dims(samp,axis=2)
+k_shifted = np.fft.fftshift(np.fft.fftshift(k_samp,axes = 0), axes = 1)
+samp = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)
+samp_shifted = np.tile(np.expand_dims(samp,axis=2),[1,1,np.size(k_full,2)]) 
+kdata = k_shifted.flatten('F')    
+kdata = kdata[np.where(samp_shifted.flatten('F')>0)]
     
     
-    S = np.fft.fftshift(np.fft.fftshift(S,axes = 0), axes = 1)
-    pMRI = pMRI_2D(S, samp)         
-    x = pMRI.multTr(kdata)
+S = np.fft.fftshift(np.fft.fftshift(S,axes = 0), axes = 1)
+pMRI = pMRI_2D(S, samp)         
+x = pMRI.multTr(kdata)
 
-    rho = 1  
-    w = np.fft.fftshift(np.fft.fftshift(x,axes=0),axes = 1)
-    z = pMRI.mult(x)-kdata
-    p = powerite(pMRI,x.shape)
-    gamma_p = rho*p
-    device = torch.device('cuda:0')    
-    for ite in range(80):     
-        model = BasicNet()
-        model = torch.load(os.getcwd()+'Brain/T1/data_for_testing/pymodel_%03d.pth' % (ite+1))
-        model = model.to(device)        
-        model.eval()
-        xold = x
-        midvar = xold-rho*pMRI.multTr(z)
-        midvar = np.fft.ifftshift(np.fft.ifftshift(midvar,axes=1),axes = 0)
-        midvar_norm = midvar/np.abs(np.real(midvar)).max()
-        midvar_norm = np.expand_dims(midvar_norm,axis = 0)
-        midvar_im = np.expand_dims(midvar_norm ,axis = 1)
-        midvar_im = np.concatenate((np.real(midvar_im),np.imag(midvar_im)),1)
-        midvar_im = np.array(midvar_im,dtype = 'float32')
-        midvar_im = torch.from_numpy(midvar_im).cuda()
-        w = model(midvar_im).cpu()
-        w = w.detach().numpy().astype(np.float32)
-        w = np.squeeze(w[:,0,:,:]+1j*w[:,1,:,:])
-        w = w* np.abs(np.real(midvar)).max()
-        x = np.fft.fftshift(np.fft.fftshift(w,axes=0),axes = 1)       
-        s = 2*x-xold
-        z = gamma_p/(1+gamma_p)*z+1/(1+gamma_p)*(pMRI.mult(s)-kdata)
-        nmse_i = NMSE(imtrue,w)
-        print(nmse_i) 
-        savenmse.append(nmse_i)
+rho = 1  
+w = np.fft.fftshift(np.fft.fftshift(x,axes=0),axes = 1)
+z = pMRI.mult(x)-kdata
+p = powerite(pMRI,x.shape)
+gamma_p = rho*p
+device = torch.device('cuda:0')    
+for ite in range(80):     
+    model = BasicNet()
+    model = torch.load(os.getcwd()+'Brain/T1/data_for_testing/pymodel_%03d.pth' % (ite+1))
+    model = model.to(device)        
+    model.eval()
+    xold = x
+    midvar = xold-rho*pMRI.multTr(z)
+    midvar = np.fft.ifftshift(np.fft.ifftshift(midvar,axes=1),axes = 0)
+    midvar_norm = midvar/np.abs(np.real(midvar)).max()
+    midvar_norm = np.expand_dims(midvar_norm,axis = 0)
+    midvar_im = np.expand_dims(midvar_norm ,axis = 1)
+    midvar_im = np.concatenate((np.real(midvar_im),np.imag(midvar_im)),1)
+    midvar_im = np.array(midvar_im,dtype = 'float32')
+    midvar_im = torch.from_numpy(midvar_im).cuda()
+    w = model(midvar_im).cpu()
+    w = w.detach().numpy().astype(np.float32)
+    w = np.squeeze(w[:,0,:,:]+1j*w[:,1,:,:])
+    w = w* np.abs(np.real(midvar)).max()
+    x = np.fft.fftshift(np.fft.fftshift(w,axes=0),axes = 1)       
+    s = 2*x-xold
+    z = gamma_p/(1+gamma_p)*z+1/(1+gamma_p)*(pMRI.mult(s)-kdata)
+    nmse_i = NMSE(imtrue,w)
+    print(nmse_i) 
+    savenmse.append(nmse_i)
 #    savemat('sigma.mat',{'sigma':savesigma}) 
 
-        file_name = os.getcwd()+'Brain/T1/data_for_testing/reside_m_k'+str(i)+'_auto/im_'+str(ite)+'.mat'
-        savemat(file_name,{'x':w})  
-    savemat(os.getcwd()+'Brain/T1/data_for_testing/reside_m_k'+str(i)+'_auto/nmse.mat',{'nmse':savenmse}) 
+    file_name = os.getcwd()+'Brain/T1/data_for_testing/reside_m_k'+str(i)+'_auto/im_'+str(ite)+'.mat'
+    savemat(file_name,{'x':w})  
+savemat(os.getcwd()+'Brain/T1/data_for_testing/reside_m_k'+str(i)+'_auto/nmse.mat',{'nmse':savenmse}) 
 
 
 
