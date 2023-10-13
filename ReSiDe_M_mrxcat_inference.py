@@ -118,54 +118,54 @@ def powerite(pMRI, n):
         uest = unew
         q = q/np.linalg.norm(q.flatten())
     return uest
-if __name__ == '__main__':
-    device = torch.device('cuda:0') 
-    samp = np.float32(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_samp_R4.mat')['samp'])
-    samp_shifted = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)          
-    rho = 1
-    nite = 80
-    for i in range(17,22):
-        savenmse = []
-        kdata = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_k.mat')['k_full']
-        lsq = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue']
-        S = np.squeeze(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_map_R4.mat')['map'])
-        x0 = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
-        x0 = np.fft.fftshift(np.fft.fftshift(x0,axes = 0), axes = 1)
-        x0 = np.tile(np.expand_dims(x0,axis=2),[1,1,np.size(samp_shifted,2)])  
-        kdata = kdata*np.expand_dims(samp,axis=2)
-        S = np.tile(np.expand_dims(S,axis = 3),[1,1,1,np.size(samp,2)])              
-        kdata = np.fft.fftshift(np.fft.fftshift(kdata,axes = 0), axes = 1)
-        S = np.fft.fftshift(np.fft.fftshift(S,axes = 0), axes = 1)   
-        k_avg = kdata.sum(axis = 3)/samp_shifted.sum(axis = 2,keepdims=1)
-        kdata = downsample_data(kdata,samp_shifted)
-        pMRI = pMRI_Op_2D_t(S, samp_shifted)
-        x = x0
-        z = pMRI.mult(x)-kdata
-        w = np.fft.fftshift(np.fft.fftshift(x,axes=0),axes = 1)
-        p = powerite(pMRI,x.shape)
-        gamma = rho*p 
-        for ite in range(nite):     
-            model = BasicNet()
-            model = torch.load(os.getcwd()+'/Perfusion/MRXCAT/data/pymodel_%03d.pth' % (ite+1)) 
-            model = model.to(device)        
-            model.eval()
-            xold = x
-            midvar = xold-rho*pMRI.multTr(z)
-            midvar = np.fft.ifftshift(np.fft.ifftshift(midvar,axes=1),axes = 0)
-            midvar_norm = np.expand_dims(np.expand_dims(midvar/np.abs(np.real(midvar)).max(),axis = 0),axis = 1)
-            midvar_im = torch.from_numpy(np.array(np.concatenate((np.real(midvar_norm),np.imag(midvar_norm)),1),dtype = 'float32')).cuda()
-            midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
-            midout = np.squeeze(midout[:,0,:,:,:]+1j*midout[:,1,:,:,:])
-            w = midout* np.abs(np.real(midvar)).max()
-            x = np.fft.fftshift(np.fft.fftshift(w,axes=0),axes = 1) 
-            s = 2*x-xold
-            z = gamma_p/(1+gamma_p)*z+1/(1+gamma_p)*(pMRI.mult(s)-kdata)
-            nmse_i = NMSE(lsq,w)
-            savenmse.append(nmse_i)
-            print('normalized mean square error of x'+str(i)+': ' + repr(nmse_i)) 
-            file_name = os.getcwd()+'/Perfusion/MRXCAT/data/reside_m_k'+str(i)+'_auto/im_'+str(ite)+'.mat'
-            savemat(file_name,{'x':w})  
-            savemat(os.getcwd()+'/Perfusion/MRXCAT/data/reside_m_k'+str(i)+'_auto/nmse.mat',{'nmse':savenmse})  
+# if __name__ == '__main__':
+device = torch.device('cuda:0') 
+samp = np.float32(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_samp_R4.mat')['samp'])
+samp_shifted = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)          
+rho = 1
+nite = 80
+for i in range(17,22):
+    savenmse = []
+    kdata = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_k.mat')['k_full']
+    lsq = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue']
+    S = np.squeeze(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_map_R4.mat')['map'])
+    x0 = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
+    x0 = np.fft.fftshift(np.fft.fftshift(x0,axes = 0), axes = 1)
+    x0 = np.tile(np.expand_dims(x0,axis=2),[1,1,np.size(samp_shifted,2)])  
+    kdata = kdata*np.expand_dims(samp,axis=2)
+    S = np.tile(np.expand_dims(S,axis = 3),[1,1,1,np.size(samp,2)])              
+    kdata = np.fft.fftshift(np.fft.fftshift(kdata,axes = 0), axes = 1)
+    S = np.fft.fftshift(np.fft.fftshift(S,axes = 0), axes = 1)   
+    k_avg = kdata.sum(axis = 3)/samp_shifted.sum(axis = 2,keepdims=1)
+    kdata = downsample_data(kdata,samp_shifted)
+    pMRI = pMRI_Op_2D_t(S, samp_shifted)
+    x = x0
+    z = pMRI.mult(x)-kdata
+    w = np.fft.fftshift(np.fft.fftshift(x,axes=0),axes = 1)
+    p = powerite(pMRI,x.shape)
+    gamma = rho*p 
+    for ite in range(nite):     
+        model = BasicNet()
+        model = torch.load(os.getcwd()+'/Perfusion/MRXCAT/data/pymodel_%03d.pth' % (ite+1)) 
+        model = model.to(device)        
+        model.eval()
+        xold = x
+        midvar = xold-rho*pMRI.multTr(z)
+        midvar = np.fft.ifftshift(np.fft.ifftshift(midvar,axes=1),axes = 0)
+        midvar_norm = np.expand_dims(np.expand_dims(midvar/np.abs(np.real(midvar)).max(),axis = 0),axis = 1)
+        midvar_im = torch.from_numpy(np.array(np.concatenate((np.real(midvar_norm),np.imag(midvar_norm)),1),dtype = 'float32')).cuda()
+        midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
+        midout = np.squeeze(midout[:,0,:,:,:]+1j*midout[:,1,:,:,:])
+        w = midout* np.abs(np.real(midvar)).max()
+        x = np.fft.fftshift(np.fft.fftshift(w,axes=0),axes = 1) 
+        s = 2*x-xold
+        z = gamma_p/(1+gamma_p)*z+1/(1+gamma_p)*(pMRI.mult(s)-kdata)
+        nmse_i = NMSE(lsq,w)
+        savenmse.append(nmse_i)
+        print('normalized mean square error of x'+str(i)+': ' + repr(nmse_i)) 
+        file_name = os.getcwd()+'/Perfusion/MRXCAT/data/reside_m_k'+str(i)+'_auto/im_'+str(ite)+'.mat'
+        savemat(file_name,{'x':w})  
+        savemat(os.getcwd()+'/Perfusion/MRXCAT/data/reside_m_k'+str(i)+'_auto/nmse.mat',{'nmse':savenmse})  
 
 
 
