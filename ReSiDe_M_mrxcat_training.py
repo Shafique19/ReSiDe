@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 27 01:18:41 2021
+Created on Thu Oct 12 01:18:41 2023
 
 @author: sizhu
 """
@@ -146,98 +146,98 @@ def powerite(pMRI, n):
         uest = unew
         q = q/np.linalg.norm(q.flatten())
     return uest
-if __name__ == '__main__':
-    kdata = []
-    lsq = []
-    S = []
-    pMRI = []
-    x = []
-    z = []
-    w = []
-    p = []
-    gamma = []
-    midvar = []
-    savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
-    xold = []
-    samp = np.float32(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_samp_R4.mat')['samp'])
-    samp_shifted = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)  
-    # x_ini = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/im_10.mat')['x'] 
-    rho = 1
-    ep = 10
-    snr = 5
-    tau = 0.9
-    alpha = 0.1
-    nite = 80
-    for i in range(1,17):
-        kdata.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_k.mat')['k_full'])
-        lsq.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue'])   
-        S.append(np.squeeze(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_map_R4.mat')['map']))
-        # x0 = x_ini[i-1,:,:,:]
-        x0 = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
-        x0 = np.fft.fftshift(np.fft.fftshift(x0,axes = 0), axes = 1)
-        # x0 = np.tile(np.expand_dims(x0,axis=2),[1,1,np.size(samp_shifted,2)])    
-        kdata[i-1] = kdata[i-1]*np.expand_dims(samp,axis=2)
-        S[i-1] = np.tile(np.expand_dims(S[i-1],axis = 3),[1,1,1,np.size(samp,2)])              
-        kdata[i-1] = np.fft.fftshift(np.fft.fftshift(kdata[i-1],axes = 0), axes = 1)
-        S[i-1] = np.fft.fftshift(np.fft.fftshift(S[i-1],axes = 0), axes = 1)           
-        kdata[i-1] = downsample_data(kdata[i-1],samp_shifted)
-        pMRI.append(pMRI_Op_2D_t(S[i-1], samp_shifted))
-        x.append(x0)
-        z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
-        w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
-        p.append(powerite(pMRI[i-1],x[i-1].shape))
-        gamma.append(rho*p[i-1]) 
-        xold.append(x[i-1])
-        midvar.append(x[i-1])
-    for ite in range(nite):   
-        # if ite < 8:
-        #     snr = 5
-        #     ep = 10
-        # if 8 <= ite < 60:
-        #     snr = 10
-        #     ep = 10
-        noisepower_avg = 0
-        for ii in range(16):
-            xold[ii] = x[ii]
-            midvar[ii] = xold[ii]-rho*pMRI[ii].multTr(z[ii])
-            midvar[ii] = np.fft.ifftshift(np.fft.ifftshift(midvar[ii],axes=1),axes = 0)            
-        model = BasicNet()
-        model.train()
-        device = torch.device('cuda:0')
-        model = model.to(device)
-        opt = optim.Adam(model.parameters(), lr=0.0001)
-        scheduler = MultiStepLR(opt, milestones=[200, 300], gamma=0.5)
-        train_loader = create_data_loaders()
-        for epoch in range(0,ep):
-            for train_iter, Data in enumerate(train_loader):
-                x_batch,y_batch = Data
-                out = model(x_batch.to(device, dtype=torch.float))
-                loss = F.mse_loss(out,y_batch.to(device, dtype=torch.float), reduction='sum')
-                opt.zero_grad()
-                loss.backward()
-                opt.step()
-        torch.save(model,os.getcwd()+'/Perfusion/MRXCAT/data/pymodel_%03d.pth' % (ite+1))          
-        for i in range(16):
-            midvar_norm = np.expand_dims(np.expand_dims(midvar[i]/np.abs(np.real(midvar[i])).max(),axis = 0),axis = 1)
-            midvar_im = torch.from_numpy(np.array(np.concatenate((np.real(midvar_norm),np.imag(midvar_norm)),1),dtype = 'float32')).cuda()
-            midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
-            midout = np.squeeze(midout[:,0,:,:,:]+1j*midout[:,1,:,:,:])
-            w[i] = midout* np.abs(np.real(midvar[i])).max()
-            x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1) 
-            s = 2*x[i]-xold[i]
-            z[i] = gamma[i]/(1+gamma[i])*z[i]+1/(1+gamma[i])*(pMRI[i].mult(s)-kdata[i])
-            nmse_i = NMSE(lsq[i],w[i])
-            savenmse[i].append(nmse_i)            
-            print('normalized mean square error of x'+str(i)+': ' + repr(nmse_i))
-            file_name = os.getcwd()+'/Perfusion/MRXCAT/data/im_'+str(ite)+'.mat'
-            savemat(file_name,{'x':w})  
-            savemat(os.getcwd()+'/Perfusion/MRXCAT/data/nmse.mat',{'nmse':savenmse}) 
-            noisepower_avg = noisepower_avg + np.var(pMRI[i].mult(x[i])-kdata[i])
-        del model
-        para = noisepower_avg/16/6.1252/tau
-        if ite > 2:
-            snr = snr*para**alpha
-            print("snr: " + repr(snr))
+# if __name__ == '__main__':
+kdata = []
+lsq = []
+S = []
+pMRI = []
+x = []
+z = []
+w = []
+p = []
+gamma = []
+midvar = []
+savenmse = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]
+xold = []
+samp = np.float32(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_samp_R4.mat')['samp'])
+samp_shifted = np.fft.fftshift(np.fft.fftshift(samp,axes = 0), axes = 1)  
+# x_ini = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/im_10.mat')['x'] 
+rho = 1
+ep = 10
+snr = 5
+tau = 0.9
+alpha = 0.1
+nite = 80
+for i in range(1,17):
+    kdata.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_k.mat')['k_full'])
+    lsq.append(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_imtrue.mat')['imtrue'])   
+    S.append(np.squeeze(loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_map_R4.mat')['map']))
+    # x0 = x_ini[i-1,:,:,:]
+    x0 = loadmat(os.getcwd()+'/Perfusion/MRXCAT/data/perf_phantom_'+str(i)+'_x0_R4.mat')['x0'] 
+    x0 = np.fft.fftshift(np.fft.fftshift(x0,axes = 0), axes = 1)
+    # x0 = np.tile(np.expand_dims(x0,axis=2),[1,1,np.size(samp_shifted,2)])    
+    kdata[i-1] = kdata[i-1]*np.expand_dims(samp,axis=2)
+    S[i-1] = np.tile(np.expand_dims(S[i-1],axis = 3),[1,1,1,np.size(samp,2)])              
+    kdata[i-1] = np.fft.fftshift(np.fft.fftshift(kdata[i-1],axes = 0), axes = 1)
+    S[i-1] = np.fft.fftshift(np.fft.fftshift(S[i-1],axes = 0), axes = 1)           
+    kdata[i-1] = downsample_data(kdata[i-1],samp_shifted)
+    pMRI.append(pMRI_Op_2D_t(S[i-1], samp_shifted))
+    x.append(x0)
+    z.append(pMRI[i-1].mult(x[i-1])-kdata[i-1])
+    w.append(np.fft.fftshift(np.fft.fftshift(x[i-1],axes=0),axes = 1))
+    p.append(powerite(pMRI[i-1],x[i-1].shape))
+    gamma.append(rho*p[i-1]) 
+    xold.append(x[i-1])
+    midvar.append(x[i-1])
+for ite in range(nite):   
+    # if ite < 8:
+    #     snr = 5
+    #     ep = 10
+    # if 8 <= ite < 60:
+    #     snr = 10
+    #     ep = 10
+    noisepower_avg = 0
+    for ii in range(16):
+        xold[ii] = x[ii]
+        midvar[ii] = xold[ii]-rho*pMRI[ii].multTr(z[ii])
+        midvar[ii] = np.fft.ifftshift(np.fft.ifftshift(midvar[ii],axes=1),axes = 0)            
+    model = BasicNet()
+    model.train()
+    device = torch.device('cuda:0')
+    model = model.to(device)
+    opt = optim.Adam(model.parameters(), lr=0.0001)
+    scheduler = MultiStepLR(opt, milestones=[200, 300], gamma=0.5)
+    train_loader = create_data_loaders()
+    for epoch in range(0,ep):
+        for train_iter, Data in enumerate(train_loader):
+            x_batch,y_batch = Data
+            out = model(x_batch.to(device, dtype=torch.float))
+            loss = F.mse_loss(out,y_batch.to(device, dtype=torch.float), reduction='sum')
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+    torch.save(model,os.getcwd()+'/Perfusion/MRXCAT/data/pymodel_%03d.pth' % (ite+1))          
+    for i in range(16):
+        midvar_norm = np.expand_dims(np.expand_dims(midvar[i]/np.abs(np.real(midvar[i])).max(),axis = 0),axis = 1)
+        midvar_im = torch.from_numpy(np.array(np.concatenate((np.real(midvar_norm),np.imag(midvar_norm)),1),dtype = 'float32')).cuda()
+        midout = model(midvar_im).cpu().detach().numpy().astype(np.float32)
+        midout = np.squeeze(midout[:,0,:,:,:]+1j*midout[:,1,:,:,:])
+        w[i] = midout* np.abs(np.real(midvar[i])).max()
+        x[i] = np.fft.fftshift(np.fft.fftshift(w[i],axes=0),axes = 1) 
+        s = 2*x[i]-xold[i]
+        z[i] = gamma[i]/(1+gamma[i])*z[i]+1/(1+gamma[i])*(pMRI[i].mult(s)-kdata[i])
+        nmse_i = NMSE(lsq[i],w[i])
+        savenmse[i].append(nmse_i)            
+        print('normalized mean square error of x'+str(i)+': ' + repr(nmse_i))
+        file_name = os.getcwd()+'/Perfusion/MRXCAT/data/im_'+str(ite)+'.mat'
+        savemat(file_name,{'x':w})  
+        savemat(os.getcwd()+'/Perfusion/MRXCAT/data/nmse.mat',{'nmse':savenmse}) 
+        noisepower_avg = noisepower_avg + np.var(pMRI[i].mult(x[i])-kdata[i])
+    del model
+    para = noisepower_avg/16/6.1252/tau
+    if ite > 2:
+        snr = snr*para**alpha
+        print("snr: " + repr(snr))
 
 
 
