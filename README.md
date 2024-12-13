@@ -1,4 +1,4 @@
-# MRI Recovery with Self-calibrated Denoisers without Fully-sampled Data (ReSiDe)
+# ReSiDe
 Required packages can be installed using:
 ```python
 pip install -r requirements.txt
